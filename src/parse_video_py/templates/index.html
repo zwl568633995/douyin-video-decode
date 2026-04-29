@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线短视频去水印解析</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(139, 92, 246, 0.4);
+            border-radius: 50%;
+            animation: float 12s infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #8b5cf6, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #888;
+        }
+
+        .platforms {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .platform-tag {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            font-size: 13px;
+            color: #aaa;
+        }
+
+        .main-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .url-input {
+            flex: 1;
+            padding: 14px 18px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .url-input:focus {
+            border-color: #8b5cf6;
+        }
+
+        .url-input::placeholder {
+            color: #666;
+        }
+
+        .parse-btn {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #8b5cf6, #ec4899);
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .parse-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
+        }
+
+        .clear-btn {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #888;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .clear-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+        }
+
+        .footer-row {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+        }
+
+        .footer-item {
+            text-align: center;
+        }
+
+        .footer-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .footer-desc {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 12px;
+        }
+
+        .footer-qrcode {
+            width: 130px;
+            height: 130px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        footer {
+            text-align: center;
+            padding: 25px;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 100;
+            display: none;
+        }
+
+        .sidebar {
+            position: fixed;
+            right: -400px;
+            top: 0;
+            width: 380px;
+            height: 100%;
+            background: rgba(20, 20, 40, 0.95);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 101;
+            padding: 25px;
+            overflow-y: auto;
+            transition: right 0.3s;
+            backdrop-filter: blur(20px);
+        }
+
+        .sidebar.show {
+            right: 0;
+        }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: transparent;
+            color: #888;
+            cursor: pointer;
+        }
+
+        .result-video {
+            width: 100%;
+            max-height: 300px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            background: #000;
+        }
+
+        .result-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .result-title {
+            font-size: 14px;
+            margin-bottom: 15px;
+            color: #ddd;
+        }
+
+        .download-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #8b5cf6, #ec4899);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 13px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .download-btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .result-cover {
+            width: 100%;
+            max-height: 180px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .grid-image {
+            width: 100%;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .image-preview {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 200;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-img {
+            max-width: 90%;
+            max-height: 90vh;
+            border-radius: 12px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            padding: 12px 24px;
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 13px;
+            z-index: 300;
+            opacity: 0;
+            transition: all 0.3s;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.success {
+            background: rgba(34, 197, 94, 0.9);
+        }
+
+        .toast.error {
+            background: rgba(239, 68, 68, 0.9);
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 10px;
+            padding: 12px;
+            color: #ef4444;
+            font-size: 13px;
+            text-align: center;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        @media (max-width: 700px) {
+            .footer-row {
+                flex-direction: column;
+                gap: 25px;
+            }
+
+            .sidebar {
+                width: 100%;
+                right: -100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles" id="particles"></div>
+
+    <div class="container">
+        <header>
+            <div class="logo">🎬 视频解析神器</div>
+            <div class="subtitle">支持抖音/快手/B站/微博等 20+ 平台去水印解析</div>
+        </header>
+
+        <div class="platforms">
+            <span class="platform-tag">抖音</span>
+            <span class="platform-tag">快手</span>
+            <span class="platform-tag">B站</span>
+            <span class="platform-tag">微博</span>
+            <span class="platform-tag">微信</span>
+            <span class="platform-tag">皮皮虾</span>
+            <span class="platform-tag">火山</span>
+            <span class="platform-tag">西瓜</span>
+            <span class="platform-tag">虎牙</span>
+            <span class="platform-tag">小红书</span>
+        </div>
+
+        <div class="main-card">
+            <div id="errorMsg" class="error-message"></div>
+            <div class="input-group">
+                <input type="text" id="url" class="url-input" placeholder="粘贴视频分享链接">
+                <button class="parse-btn" onclick="parseVideo()">解析</button>
+            </div>
+            <button class="clear-btn" onclick="clearInput()">清空</button>
+        </div>
+
+        <div class="footer-card">
+            <div class="footer-row">
+                <div class="footer-item">
+                    <div class="footer-title">💬 技术支持</div>
+                    <div class="footer-desc">需要技术支持或源码？添加微信备注"去水印"</div>
+                    <img src="/img/info.jpg" class="footer-qrcode">
+                </div>
+                <div class="footer-item">
+                    <div class="footer-title">❤️ 请我喝杯咖啡</div>
+                    <div class="footer-desc">您的支持是我继续开发的动力 ☕</div>
+                    <img src="/img/wechat_pay.jpg" class="footer-qrcode">
+                </div>
+            </div>
+        </div>
+
+        <footer>Made with ❤️</footer>
+    </div>
+
+    <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">解析结果</span>
+            <button class="close-btn" onclick="closeSidebar()">✕</button>
+        </div>
+        <div id="result">
+            <div style="text-align: center; padding: 60px 20px; color: #666;">
+                <div style="font-size: 40px; margin-bottom: 15px;">🔗</div>
+                <p>输入视频链接并点击解析</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="image-preview" id="imagePreview" onclick="closeImagePreview()">
+        <img src="" id="previewImg" class="preview-img">
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        function initParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 25; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.left = Math.random() * 100 + '%';
+                p.style.animationDelay = Math.random() * 12 + 's';
+                p.style.animationDuration = (8 + Math.random() * 8) + 's';
+                container.appendChild(p);
+            }
+        }
+
+        async function parseVideo() {
+            const url = document.getElementById('url').value.trim();
+            if (!url) {
+                showError('请输入视频链接');
+                return;
+            }
+
+            document.getElementById('errorMsg').style.display = 'none';
+
+            try {
+                const res = await fetch(`/video/share/url/parse?url=${encodeURIComponent(url)}`);
+                const data = await res.json();
+
+                if (data.code === 200) {
+                    showResult(data.data);
+                    showSidebar();
+                    showToast('解析成功', 'success');
+                } else {
+                    showError(data.msg || '解析失败');
+                }
+            } catch {
+                showError('网络错误，请重试');
+            }
+        }
+
+        function showResult(data) {
+            let html = '';
+
+            if (data.video_url) {
+                html += `
+                    <div style="margin-bottom: 20px;">
+                        <div class="result-label">视频预览</div>
+                        <video class="result-video" controls poster="${data.cover_url || ''}">
+                            <source src="/video/proxy?url=${encodeURIComponent(data.video_url)}" type="video/mp4">
+                        </video>
+                        <button class="download-btn" onclick="downloadVideo('${data.video_url}')">下载视频</button>
+                    </div>
+                `;
+            }
+
+            if (data.cover_url) {
+                html += `
+                    <div style="margin-bottom: 20px;">
+                        <div class="result-label">封面预览</div>
+                        <img src="${data.cover_url}" class="result-cover" onclick="openImagePreview('${data.cover_url}')">
+                        <button class="download-btn download-btn-secondary" onclick="downloadCover('${data.cover_url}')">下载封面</button>
+                    </div>
+                `;
+            }
+
+            if (data.title) {
+                html += `<div class="result-label">视频标题</div><div class="result-title">${data.title}</div>`;
+            }
+
+            if (data.images && data.images.length) {
+                html += `
+                    <div>
+                        <div class="result-label">图片合集</div>
+                        <div class="image-grid">
+                            ${data.images.map(img => `<img src="${img}" class="grid-image" onclick="openImagePreview('${img}')">`).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            document.getElementById('result').innerHTML = html;
+        }
+
+        async function downloadVideo(url) {
+            try {
+                const res = await fetch(`/video/proxy?url=${encodeURIComponent(url)}`);
+                const blob = await res.blob();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'video.mp4';
+                a.click();
+                showToast('下载成功', 'success');
+            } catch {
+                showToast('下载失败', 'error');
+            }
+        }
+
+        async function downloadCover(url) {
+            try {
+                const res = await fetch(url);
+                const blob = await res.blob();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'cover.jpg';
+                a.click();
+                showToast('下载成功', 'success');
+            } catch {
+                showToast('下载失败', 'error');
+            }
+        }
+
+        function openImagePreview(url) {
+            document.getElementById('previewImg').src = url;
+            document.getElementById('imagePreview').style.display = 'flex';
+        }
+
+        function closeImagePreview() {
+            document.getElementById('imagePreview').style.display = 'none';
+        }
+
+        function showSidebar() {
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('sidebar').classList.add('show');
+        }
+
+        function closeSidebar() {
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('sidebar').classList.remove('show');
+        }
+
+        function clearInput() {
+            document.getElementById('url').value = '';
+            document.getElementById('errorMsg').style.display = 'none';
+        }
+
+        function showError(msg) {
+            document.getElementById('errorMsg').textContent = msg;
+            document.getElementById('errorMsg').style.display = 'block';
+        }
+
+        function showToast(msg, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = `toast ${type}`;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        document.getElementById('url').addEventListener('keydown', e => {
+            if (e.key === 'Enter') parseVideo();
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                closeSidebar();
+                closeImagePreview();
+            }
+        });
+
+        initParticles();
+    </script>
+</body>
+</html>
